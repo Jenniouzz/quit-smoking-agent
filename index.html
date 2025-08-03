@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Quit Smoking Agent</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Quit Agent">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        .status-indicator {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status-indicator.connected {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .status-indicator.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .craving-button {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            border: none;
+            border-radius: 50px;
+            padding: 20px;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+        }
+
+        .craving-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(255, 107, 107, 0.4);
+        }
+
+        .craving-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .support-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .support-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .support-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .support-card-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .support-card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chat-container {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .back-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 20px;
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 0;
+            max-height: 60vh;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 20px;
+            max-width: 90%;
+            animation: fadeIn 0.3s ease-in;
+            word-wrap: break-word;
+        }
+
+        .message.agent {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            margin-right: auto;
+        }
+
+        .message.user {
+            background: rgba(76, 175, 80, 0.3);
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .message.system {
+            background: rgba(255, 193, 7, 0.3);
+            margin: 0 auto;
+            text-align: center;
+            font-style: italic;
+            max-width: 100%;
+        }
+
+        .typing-indicator {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 15px;
+            max-width: 90%;
+            display: none;
+        }
+
+        .typing-dots {
+            display: inline-block;
+        }
+
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: white;
+            margin: 0 2px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            backdrop-filter: blur(10px);
+        }
+
+        .message-input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .send-button {
+            background: #4ade80;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .send-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+        }
+
+        .settings-panel {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .settings-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-select option {
+            background: #333;
+            color: white;
+        }
+
+        .save-button {
+            background: #4ade80;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 24px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .settings-button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 15px;
+            padding: 15px;
+            color: white;
+            width: 100%;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main View -->
+        <div id="mainView">
+            <div class="header">
+                <h1>🧠 Smart Quit Agent</h1>
+                <p class="subtitle">AI-powered smoking cessation support</p>
+            </div>
+
+            <div id="statusIndicator" class="status-indicator">
+                <div id="statusText">⚙️ Configure API settings to get started</div>
+            </div>
+
+            <button id="cravingButton" class="craving-button" onclick="startCravingSupport()" disabled>
+                🆘 I'm Having a Craving Right Now
+            </button>
+
+            <div class="support-options">
+                <div class="support-card" onclick="startGeneralSupport()">
+                    <div class="support-card-icon">💬</div>
+                    <div class="support-card-title">General Support</div>
+                </div>
+                <div class="support-card" onclick="startStressSupport()">
+                    <div class="support-card-icon">😰</div>
+                    <div class="support-card-title">Stress/Anxiety</div>
+                </div>
+                <div class="support-card" onclick="startSocialSupport()">
+                    <div class="support-card-icon">👥</div>
+                    <div class="support-card-title">Social Situations</div>
+                </div>
+                <div class="support-card" onclick="startTriggerSupport()">
+                    <div class="support-card-icon">⚡</div>
+                    <div class="support-card-title">Trigger Moments</div>
+                </div>
+            </div>
+
+            <button class="settings-button" onclick="showSettings()">⚙️ API Settings</button>
+        </div>
+
+        <!-- Settings View -->
+        <div id="settingsView" class="hidden">
+            <div class="header">
+                <h2>API Configuration</h2>
+            </div>
+            
+            <div class="settings-panel">
+                <div class="settings-title">LLM Provider Settings</div>
+                
+                <div class="form-group">
+                    <label class="form-label">Provider</label>
+                    <select id="providerSelect" class="form-select" onchange="updateProviderFields()">
+                        <option value="">Select Provider</option>
+                        <option value="openai">OpenAI (GPT-4, GPT-3.5)</option>
+                        <option value="anthropic">Anthropic (Claude)</option>
+                        <option value="google">Google (Gemini)</option>
+                        <option value="custom">Custom API Endpoint</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">API Key</label>
+                    <input type="password" id="apiKeyInput" class="form-input" placeholder="Enter your API key">
+                </div>
+
+                <div class="form-group" id="modelGroup">
+                    <label class="form-label">Model</label>
+                    <input type="text" id="modelInput" class="form-input" placeholder="e.g., gpt-4, claude-3-sonnet">
+                </div>
+
+                <div class="form-group hidden" id="endpointGroup">
+                    <label class="form-label">API Endpoint</label>
+                    <input type="url" id="endpointInput" class="form-input" placeholder="https://api.example.com/v1/chat/completions">
+                </div>
+
+                <button class="save-button" onclick="saveSettings()">Save Configuration</button>
+            </div>
+
+            <button class="settings-button" onclick="backToMain()">← Back to Home</button>
+        </div>
+
+        <!-- Chat View -->
+        <div id="chatView" class="chat-container">
+            <div class="chat-header">
+                <button class="back-button" onclick="backToMain()">← Back</button>
+                <div id="chatTitle">Support Session</div>
+            </div>
+            
+            <div class="messages" id="messages">
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    AI is thinking...
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" class="message-input" id="messageInput" placeholder="Tell me what's happening...">
+                <button class="send-button" id="sendButton" onclick="sendMessage()">→</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // App configuration
+        let config = {
+            provider: '',
+            apiKey: '',
+            model: '',
+            endpoint: ''
+        };
+
+        let currentSessionType = '';
+        let conversationHistory = [];
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            loadConfig();
+            updateStatus();
+            
+            // Add enter key support
+            document.getElementById('messageInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        });
+
+        function loadConfig() {
+            const savedConfig = localStorage.getItem('quitAgentConfig');
+            if (savedConfig) {
+                config = JSON.parse(savedConfig);
+                updateConfigUI();
+            }
+        }
+
+        function saveConfig() {
+            localStorage.setItem('quitAgentConfig', JSON.stringify(config));
+        }
+
+        function updateConfigUI() {
+            document.getElementById('providerSelect').value = config.provider;
+            document.getElementById('apiKeyInput').value = config.apiKey;
+            document.getElementById('modelInput').value = config.model;
+            document.getElementById('endpointInput').value = config.endpoint;
+            updateProviderFields();
+        }
+
+        function updateStatus() {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const cravingButton = document.getElementById('cravingButton');
+
+            if (config.provider && config.apiKey) {
+                statusIndicator.className = 'status-indicator connected';
+                statusText.textContent = `✅ Connected to ${config.provider.toUpperCase()}`;
+                cravingButton.disabled = false;
+            } else {
+                statusIndicator.className = 'status-indicator error';
+                statusText.textContent = '⚙️ Configure API settings to get started';
+                cravingButton.disabled = true;
+            }
+        }
+
+        function showSettings() {
+            document.getElementById('mainView').classList.add('hidden');
+            document.getElementById('settingsView').classList.remove('hidden');
+        }
+
+        function updateProviderFields() {
+            const provider = document.getElementById('providerSelect').value;
+            const endpointGroup = document.getElementById('endpointGroup');
+            const modelInput = document.getElementById('modelInput');
+
+            if (provider === 'custom') {
+                endpointGroup.classList.remove('hidden');
+            } else {
+                endpointGroup.classList.add('hidden');
+            }
+
+            // Set default models
+            switch(provider) {
+                case 'openai':
+                    modelInput.placeholder = 'gpt-4, gpt-3.5-turbo';
+                    break;
+                case 'anthropic':
+                    modelInput.placeholder = 'claude-3-sonnet-20240229';
+                    break;
+                case 'google':
+                    modelInput.placeholder = 'gemini-pro';
+                    break;
+                default:
+                    modelInput.placeholder = 'Enter model name';
+            }
+        }
+
+        function saveSettings() {
+            config.provider = document.getElementById('providerSelect').value;
+            config.apiKey = document.getElementById('apiKeyInput').value;
+            config.model = document.getElementById('modelInput').value;
+            config.endpoint = document.getElementById('endpointInput').value;
+
+            if (!config.provider || !config.apiKey) {
+                alert('Please select a provider and enter your API key');
+                return;
+            }
+
+            saveConfig();
+            updateStatus();
+            backToMain();
+        }
+
+        function backToMain() {
+            document.getElementById('settingsView').classList.add('hidden');
+            document.getElementById('chatView').style.display = 'none';
+            document.getElementById('mainView').classList.remove('hidden');
+            
+            // Clear chat
+            document.getElementById('messages').innerHTML = '<div class="typing-indicator" id="typingIndicator"><div class="typing-dots"><span></span><span></span><span></span></div>AI is thinking...</div>';
+            conversationHistory = [];
+        }
+
+        function startCravingSupport() {
+            currentSessionType = 'craving';
+            startChat('🆘 Emergency Craving Support');
+            
+            const initialPrompt = getInitialPrompt('craving');
+            sendToLLM("I'm having a strong craving to smoke right now. I need immediate, targeted help.", initialPrompt);
+        }
+
+        function startGeneralSupport() {
+            currentSessionType = 'general';
+            startChat('💬 General Support');
+            
+            const initialPrompt = getInitialPrompt('general');
+            sendToLLM("I'd like some general support with my quit smoking journey.", initialPrompt);
+        }
+
+        function startStressSupport() {
+            currentSessionType = 'stress';
+            startChat('😰 Stress & Anxiety Support');
+            
+            const initialPrompt = getInitialPrompt('stress');
+            sendToLLM("I'm feeling stressed/anxious and it's making me want to smoke.", initialPrompt);
+        }
+
+        function startSocialSupport() {
+            currentSessionType = 'social';
+            startChat('👥 Social Situation Support');
+            
+            const initialPrompt = getInitialPrompt('social');
+            sendToLLM("I'm in or about to be in a social situation where smoking is common.", initialPrompt);
+        }
+
+        function startTriggerSupport() {
+            currentSessionType = 'trigger';
+            startChat('⚡ Trigger Management');
+            
+            const initialPrompt = getInitialPrompt('trigger');
+            sendToLLM("I've encountered a trigger that's making me want to smoke.", initialPrompt);
+        }
+
+        function startChat(title) {
+            document.getElementById('mainView').classList.add('hidden');
+            document.getElementById('chatView').style.display = 'flex';
+            document.getElementById('chatTitle').textContent = title;
+            conversationHistory = [];
+        }
+
+        function getInitialPrompt(sessionType) {
+            const basePrompt = `You are a specialized AI smoking cessation coach. Your role is to provide immediate, targeted, and practical support to help someone avoid smoking. You should be empathetic, non-judgmental, and action-oriented.
+
+CRITICAL GUIDELINES:
+1. ALWAYS ask about their current situation first (location, time, who they're with, what they're doing, availability for activities)
+2. Provide specific, actionable strategies based on their context
+3. Offer multiple options so they can choose what works for them
+4. Keep responses concise but supportive
+5. Use a warm, encouraging tone
+6. Focus on immediate, practical solutions
+
+TOOLSET FOR RECOMMENDATIONS:
+Physical Techniques: breathing exercises, cold water, physical movement, sensory distractions
+Mental Techniques: mindfulness, reframing thoughts, visualization, counting exercises  
+Behavioral: environment change, substitute activities, social support, routine interruption
+Immediate Distractions: games, calls, creative activities, productive tasks
+Long-term Motivation: health benefits, financial savings, personal goals
+
+Current session type: ${sessionType}
+
+Remember: Ask about their situation FIRST, then provide targeted recommendations based on their specific context.`;
+
+            return basePrompt;
+        }
+
+        function addMessage(sender, text) {
+            const messagesContainer = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+            messageDiv.textContent = text;
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTyping() {
+            document.getElementById('typingIndicator').style.display = 'block';
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+        }
+
+        function hideTyping() {
+            document.getElementById('typingIndicator').style.display = 'none';
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            addMessage('user', message);
+            input.value = '';
+            
+            sendToLLM(message);
+        }
+
+        async function sendToLLM(userMessage, systemPrompt = null) {
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
+            showTyping();
+
+            // Add to conversation history
+            if (systemPrompt && conversationHistory.length === 0) {
+                conversationHistory.push({ role: 'system', content: systemPrompt });
+            }
+            conversationHistory.push({ role: 'user', content: userMessage });
+
+            try {
+                const response = await callLLMAPI(conversationHistory);
+                hideTyping();
+                
+                if (response) {
+                    addMessage('agent', response);
+                    conversationHistory.push({ role: 'assistant', content: response });
+                } else {
+                    addMessage('system', 'Sorry, I had trouble connecting. Please try again.');
+                }
+            } catch (error) {
+                hideTyping();
+                addMessage('system', 'Connection error. Please check your API settings and try again.');
+                console.error('LLM API Error:', error);
+            }
+
+            sendButton.disabled = false;
+        }
+
+        async function callLLMAPI(messages) {
+            let apiUrl, headers, body;
+
+            switch(config.provider) {
+                case 'openai':
+                    apiUrl = 'https://api.openai.com/v1/chat/completions';
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${config.apiKey}`
+                    };
+                    body = {
+                        model: config.model || 'gpt-3.5-turbo',
+                        messages: messages,
+                        temperature: 0.7,
+                        max_tokens: 500
+                    };
+                    break;
+
+                case 'anthropic':
+                    apiUrl = 'https://api.anthropic.com/v1/messages';
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'x-api-key': config.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    };
+                    
+                    // Convert messages format for Anthropic
+                    const systemMessage = messages.find(m => m.role === 'system');
+                    const conversationMessages = messages.filter(m => m.role !== 'system');
+                    
+                    body = {
+                        model: config.model || 'claude-3-sonnet-20240229',
+                        max_tokens: 500,
+                        messages: conversationMessages
+                    };
+                    
+                    if (systemMessage) {
+                        body.system = systemMessage.content;
+                    }
+                    break;
+
+                case 'google':
+                    apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${config.model || 'gemini-pro'}:generateContent?key=${config.apiKey}`;
+                    headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    // Convert to Gemini format
+                    const parts = messages.map(m => ({ text: `${m.role}: ${m.content}` }));
+                    body = {
+                        contents: [{ parts: parts }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            maxOutputTokens: 500
+                        }
+                    };
+                    break;
+
+                case 'custom':
+                    apiUrl = config.endpoint;
+                    headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${config.apiKey}`
+                    };
+                    body = {
+                        model: config.model,
+                        messages: messages,
+                        temperature: 0.7,
+                        max_tokens: 500
+                    };
+                    break;
+
+                default:
+                    throw new Error('No provider configured');
+            }
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Extract response based on provider
+            switch(config.provider) {
+                case 'openai':
+                case 'custom':
+                    return data.choices?.[0]?.message?.content;
+                case 'anthropic':
+                    return data.content?.[0]?.text;
+                case 'google':
+                    return data.candidates?.[0]?.content?.parts?.[0]?.text;
+                default:
+                    return null;
+            }
+        }
+    </script>
+</body>
+</html>
